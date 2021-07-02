@@ -44,6 +44,10 @@ bool serialWasDisconnected = true;
 
 float voltage = 0.0;
 
+bool scdCal = false;
+uint32_t tBegin;
+uint16_t scd41CorrectionFactor;
+
 void setup(void) {
   pinMode(LED_BUILTIN, OUTPUT);
   //Serial.begin(115200);
@@ -78,6 +82,7 @@ void setup(void) {
     scd4x.stopPeriodicMeasurement();
     delay(1000);
     scd4x.startPeriodicMeasurement();  
+    scd4x.setAutomaticSelfCalibration(0);
 
   //Setup rtc
     //Serial.println("Initializing RTC");
@@ -117,6 +122,10 @@ void setup(void) {
     {
       Serial.print("e-Paper init failed\r\n");
     }
+
+    tBegin = millis();
+    //scdCal = true; //to launch the calibration !! The calibration should work but was not tested !!
+
   
 
 }
@@ -126,6 +135,19 @@ void loop() {
   uint16_t co2;
   uint16_t temperature;
   uint16_t humidity;
+
+  if (((millis()-tBegin) > 180000) && scdCal){
+    scd4x.stopPeriodicMeasurement();
+    delay(500);
+    scd4x.performForcedRecalibration(666, scd41CorrectionFactor);
+    delay(500);
+    scd4x.startPeriodicMeasurement();
+    delay(500);
+
+    scd30.forceRecalibrationWithReference(666);
+    delay(500);
+  }
+
   if (scd30.dataReady()){
 
     if (!scd30.read()){ Serial.println("Error reading sensor data"); return; }
@@ -143,41 +165,11 @@ void loop() {
       }
       //Serial.println("Serial send data");
       printCSVvalues(Serial);      
-    }
-    else
-    {
+    } else {
       //Serial.println("Serial not available");
       serialWasDisconnected = true;
     }
-
-    /*
-    Serial.print("Temperature: ");
-    Serial.print(scd30.temperature);
-    Serial.println(" degrees C");
     
-    Serial.print("Relative Humidity: ");
-    Serial.print(scd30.relative_humidity);
-    Serial.println(" %");
-    
-    Serial.print("CO2: ");
-    Serial.print(scd30.CO2, 3);
-    Serial.println(" ppm");
-    Serial.println("");
-
-    if (error) {
-        Serial.print("Error trying to execute readMeasurement()");
-    } else if (co2 == 0) {
-        Serial.println("Invalid sample detected, skipping.");
-    } else {
-        Serial.print("Co2:");
-        Serial.print(SCD41_co2);
-        Serial.print("\t");
-        Serial.print("Temperature:");
-        Serial.print(SCD41_temperature);
-        Serial.print("\t");
-        Serial.print("Humidity:");
-        Serial.println(SCD41_humidity);
-    }*/
   } else {
     //Serial.println("No data");
   }
@@ -331,7 +323,7 @@ int getBatteryPercent()
 String formatIntToStr(int i)
 {
   /*
-  Fait en sorte que l'on est deux chiffres 
+  Fait en sorte que l'on ait deux chiffres 
   pout les dates & heurs
   */
   String s = "";
