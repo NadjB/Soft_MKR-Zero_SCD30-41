@@ -46,7 +46,7 @@ float voltage = 0.0;
 
 bool scdCal = false;
 uint32_t tBegin;
-uint16_t scd41CorrectionFactor;
+uint16_t scd41CorrectionFactor = 0;
 
 void setup(void) {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -136,16 +136,20 @@ void loop() {
   uint16_t temperature;
   uint16_t humidity;
 
-  if (((millis()-tBegin) > 180000) && scdCal){
+  if (((millis()-tBegin) > 180000) && scdCal) //launch calibration after running for 3mn
+  {
+    int ppmInEvironement = 666;
     scd4x.stopPeriodicMeasurement();
     delay(500);
-    scd4x.performForcedRecalibration(666, scd41CorrectionFactor);
+    scd4x.performForcedRecalibration(ppmInEvironement, scd41CorrectionFactor);
     delay(500);
     scd4x.startPeriodicMeasurement();
     delay(500);
 
-    scd30.forceRecalibrationWithReference(666);
+    scd30.forceRecalibrationWithReference(ppmInEvironement);
     delay(500);
+    
+    scdCal = false; 
   }
 
   if (scd30.dataReady()){
