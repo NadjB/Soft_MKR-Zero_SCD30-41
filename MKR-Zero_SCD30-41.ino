@@ -71,7 +71,8 @@ template <typename T> inline void print_csv_head(T&& out)
   s += ("Batterie|V");
   s += ('\t');
   s += ("Batterie|%");
-  out.println(s);
+  s += ('\n');
+  out.print(s);
 }
 
 template<typename T> void printCSVvalues(T&& out)
@@ -96,7 +97,8 @@ template<typename T> void printCSVvalues(T&& out)
   s += analogRead(ADC_BATTERY) * 4.2 / 1023.0; // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 4.3V):
   s += ('\t');
   s += getBatteryPercent();
-  out.println(s);
+  s += ('\n');
+  out.print(s);
 }
 
 
@@ -156,12 +158,6 @@ void printEpaper()
   */
 
   EPD_TurnOnDisplay();
-}
-
-void convertSCD41measures(uint16_t co2, uint16_t temperature, uint16_t humidity) {
-  SCD41_co2 = co2;
-  SCD41_temperature = (temperature * 175.0 / 65536.0 - 45.0);
-  SCD41_humidity = (humidity * 100.0 / 65536.0);
 }
 
 
@@ -252,7 +248,8 @@ void setup(void) {
   // }
 
   delay(1000);
-  scd30.setMeasurementInterval(5); //to match the 5s of the SCD41
+  //scd30.reset();delay(10000);
+  scd30.setMeasurementInterval(2); //to match the 5s of the SCD41 (SCD30 fastest at 2s)
   Serial.print("Measurement Interval: ");
   Serial.print(scd30.getMeasurementInterval());
   Serial.println(" seconds");
@@ -311,12 +308,12 @@ void setup(void) {
 void loop() {
 
   uint16_t co2;
-  uint16_t temperature;
-  uint16_t humidity;
+  float temperature;
+  float humidity;
 
     if (((millis()-tBegin) > 180000) && scdCal) //launch calibration after running for 3mn
   {
-    int ppmInEvironement = 666;
+    int ppmInEvironement = 400;
     scd4x.stopPeriodicMeasurement();
     delay(500);
     scd4x.performForcedRecalibration(ppmInEvironement, scd41CorrectionFactor);
@@ -335,8 +332,7 @@ void loop() {
       Serial.println("Error reading sensor data");
       return;
     }
-    error = scd4x.readMeasurement(co2, temperature, humidity);
-    convertSCD41measures(co2, temperature, humidity);
+    error = scd4x.readMeasurement(SCD41_co2, SCD41_temperature, SCD41_humidity);
 
     printEpaper();
 
